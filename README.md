@@ -78,6 +78,7 @@ formatiranje
 
 ---
 
+```mermaid
 flowchart TD
     A[Bullet Points Input] --> B[Author]
 
@@ -94,9 +95,11 @@ flowchart TD
     E -->|No| G[Copy Editor]
 
     G --> H[Final Article]
+```
 
 ---
 
+```mermaid
 flowchart LR
     subgraph Author
         A1[Bullet Points]
@@ -117,9 +120,11 @@ flowchart LR
         D1[Final Draft]
         D2[Grammar Rules]
     end
+```
 
 ---
 
+```mermaid
 sequenceDiagram
     participant Author
     participant Editor
@@ -137,3 +142,4 @@ sequenceDiagram
 
     Editor->>CopyEditor: Final draft
     CopyEditor->>Editor: Minor corrections
+```
