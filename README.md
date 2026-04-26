@@ -1,145 +1,88 @@
-# multi-agent-demo-system
+# Multi-Agent Newsroom — Project Setup
 
-📰 Uređivanje novinskog članka
-Uloga u redakciji - Agent
-* Novinar/Autor - Piše prvi draft na osnovu bullet points
-* Urednik - Provjerava stil, tok, jasnoću
-* Fact-checker - Označava tvrdnje koje treba verifikovati
-* Copy editor - Finalna gramatika i formatiranje
+Production-ready scaffold for the multi-agent newspaper editing demo
+(see [`docs/CONCEPT.md`](docs/CONCEPT.md) for the original spec).
 
-Ulaz: nekoliko bullet points o nekoj temi. Izlaz: poliran članak s komentarima svakog agenta vidljivim u demu.
+## Stack
 
-1. Novinar (Author)
+**Backend** (`backend/`) — Python 3.12, Django 5, Django REST Framework,
+PostgreSQL (via `psycopg`), Redis (via `django-redis`), Gunicorn,
+WhiteNoise, Ruff, pytest.
 
-Input: bullet points
-Output: prvi draft
+**Frontend** (`frontend/`) — Vite, React 18, TypeScript, TanStack Query +
+TanStack Router, Tailwind + shadcn/ui primitives, Vitest +
+Testing Library, Biome (lint + format).
 
-može napraviti greške
-može ubaciti neprovjerene tvrdnje
-stil može biti “raw”
+**Deploy** — Railway (Dockerfile builders) for the `backend`, `frontend`,
+PostgreSQL plugin and Redis plugin services.
 
-👉 ovo je namjerno — daje materijal drugim agentima
+## Local development
 
-2. Urednik (Editor)
+### With Docker Compose (recommended)
 
-Radi:
-
-poboljšava tok teksta
-reorganizuje strukturu
-označava dijelove koji su “slabi” ili nejasni
-
-VAŽNO:
-
-ne mora sve popraviti
-može vratiti tekst autoru (simulira iteraciju)
-
-👉 ovdje već dobijaš prvi feedback loop
-
-3. Fact-checker
-
-Radi:
-
-označava tvrdnje tipa:
-brojke
-“studije kažu…”
-konkretne činjenice
-
-Output nije čist tekst, nego npr:
-
-komentari tipa: “⚠️ verify this claim”
-
-👉 ključna stvar:
-ne popravlja tekst, nego flaguje probleme
-
-4. Editor (ponovo)
-
-Sad ima:
-
-tekst
-komentare fact-checkera
-
-Radi:
-
-ublažava tvrdnje
-uklanja sumnjive dijelove
-ili ih preformuliše
-
-👉 ovo je realno ponašanje u redakciji
-
-5. Copy editor (final layer)
-
-Radi:
-
-gramatika
-stil
-formatiranje
-
-👉 nema više velikih promjena, samo polish
-
----
-
-```mermaid
-flowchart TD
-    A[Bullet Points Input] --> B[Author]
-
-    B --> C[Editor Review]
-
-    C -->|Needs rewrite| B
-    C -->|Approved draft| D[Fact-checker]
-
-    D --> E{Issues found?}
-
-    E -->|Yes| F[Editor Revision]
-    F --> D
-
-    E -->|No| G[Copy Editor]
-
-    G --> H[Final Article]
+```bash
+docker compose up --build
 ```
 
----
+- Backend: <http://localhost:8000> (admin at `/admin/`, health at `/api/health/`)
+- Frontend: <http://localhost:4173>
 
-```mermaid
-flowchart LR
-    subgraph Author
-        A1[Bullet Points]
-        A2[Writing Ability]
-    end
+### Manual
 
-    subgraph Editor
-        B1[Draft Article]
-        B2[Style Guidelines]
-    end
+**Backend:**
 
-    subgraph FactChecker
-        C1[Draft Article]
-        C2[Claim Detection Rules]
-    end
-
-    subgraph CopyEditor
-        D1[Final Draft]
-        D2[Grammar Rules]
-    end
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py runserver
+# tests / lint
+pytest
+ruff check . && ruff format --check .
 ```
 
----
+**Frontend:**
 
-```mermaid
-sequenceDiagram
-    participant Author
-    participant Editor
-    participant FactChecker
-    participant CopyEditor
-
-    Author->>Editor: Draft v1
-    Editor->>Author: Feedback (revise intro)
-    Author->>Editor: Draft v2
-
-    Editor->>FactChecker: Reviewed draft
-    FactChecker->>Editor: Flagged claims
-
-    Editor->>Editor: Revise based on flags
-
-    Editor->>CopyEditor: Final draft
-    CopyEditor->>Editor: Minor corrections
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+# tests / lint
+npm test
+npm run check
 ```
+
+## Deploying to Railway
+
+1. Create a new Railway project.
+2. Add the **PostgreSQL** and **Redis** plugins. They expose
+   `DATABASE_URL` and `REDIS_URL` automatically.
+3. Add a service from this repo with the **Root directory** set to
+   `backend`. Railway will use `backend/railway.json` and
+   `backend/Dockerfile`. Set:
+   - `DJANGO_SECRET_KEY` (generate a strong value)
+   - `DEBUG=False`
+   - `ALLOWED_HOSTS=<your-app>.up.railway.app`
+   - `CORS_ALLOWED_ORIGINS=https://<your-frontend>.up.railway.app`
+4. Add a second service with the **Root directory** set to `frontend`.
+   Set the build-time variable `VITE_API_URL=https://<backend>.up.railway.app`.
+5. Generate domains for both services. Done.
+
+The backend entrypoint runs `migrate` and `collectstatic` on every boot,
+and Gunicorn binds to Railway's `$PORT`. The frontend image serves the
+static `dist/` build via `serve` on `$PORT`.
+
+## Layout
+
+```
+backend/        Django project (core/), DRF app (articles/)
+frontend/      Vite + React app
+docker-compose.yml  Local dev stack (Postgres + Redis + backend + frontend)
+```
+
+## Concept
+
+The original concept (in Bosnian) is preserved in [`docs/CONCEPT.md`](docs/CONCEPT.md).
